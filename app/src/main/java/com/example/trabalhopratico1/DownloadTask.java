@@ -1,49 +1,80 @@
 package com.example.trabalhopratico1;
 
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
-import android.view.View;
-import android.widget.ImageView;
-import android.widget.TextView;
+import android.util.Log;
 
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
-public class DownloadTask extends AsyncTask<Bitmap, String, Void> {
+public class DownloadTask extends AsyncTask<String, Void, Bitmap> {
 
-    private FloatingActionButton btnDown;
-    private TextView edtUrl;
-    private ImageView imgDow;
+    private Listener listener;
 
-    public DownloadTask(FloatingActionButton btnDown, TextView edtUrl, ImageView imgDow){
+    @Override
+    protected Bitmap doInBackground(String... params) {
 
-        this.btnDown = btnDown;
-        this.edtUrl = edtUrl;
-        this.imgDow = imgDow;
+        return downloadImage(params[0]) ;
     }
 
     @Override
-    protected void onPreExecute(){
+    protected void onProgressUpdate(Void... progress) {
 
-        btnDown.setEnabled(false);
-        edtUrl.setVisibility(View.VISIBLE);
-        imgDow.setVisibility(View.INVISIBLE);
     }
-
 
     @Override
-    protected Void doInBackground(Bitmap... bitmaps) {
-        return null;
+    protected void onPostExecute(Bitmap bmp) {
+        if (listener != null) {
+            listener.onSuccess(bmp);
+        }
     }
 
-    protected void OnProgressUpdate(String... values){
+    private Bitmap downloadImage(String address) {
+        Bitmap bmp = null;
 
+        HttpURLConnection urlConnection = null;
 
+        try {
+            URL url = new URL( address );
+
+            urlConnection = (HttpURLConnection) url.openConnection();
+
+            urlConnection.connect();
+            int resp = urlConnection.getResponseCode();
+            switch (resp){
+                case HttpURLConnection.HTTP_OK:
+                    try(InputStream is = urlConnection.getInputStream()){
+                        bmp = BitmapFactory.decodeStream(is);
+
+                    } catch(IOException e){
+                        e.printStackTrace();
+                    }
+                    break;
+                case HttpURLConnection.HTTP_UNAUTHORIZED:
+
+                default:
+                    break;
+            }
+        } catch (Exception e) {
+            Log.d("debug", "downloadImage error");
+            e.printStackTrace();
+        } finally {
+            if (urlConnection != null) {
+                urlConnection.disconnect();
+            }
+        }
+        return bmp;
     }
 
-    protected void onPostExecute(Void aVoid){
+    void setListener(Listener listener) {
+        this.listener = listener;
+    }
 
-        btnDown.setEnabled(true);
-        edtUrl.setVisibility(View.VISIBLE);
-        imgDow.setVisibility(View.VISIBLE);
+    interface Listener {
+        void onSuccess(Bitmap bmp);
     }
 }
+
